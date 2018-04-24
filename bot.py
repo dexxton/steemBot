@@ -9,33 +9,21 @@ import subprocess
 from piston.steem import Steem
 from random import randint
 
-# grab config vars
-percentChanceToPost = int(os.environ.get('percentChanceToPost'))
-numPostsToConsider = int(os.environ.get('numPostsToConsider'))
-voteWeight = int(os.environ.get('voteWeight'))
+from piston.steem import Steem
+
 steemPostingKey = os.environ.get('steemPostingKey')
 steemAccountName = os.environ.get('steemAccountName')
 
-# [percentChanceToPost] chance to proceed past this block
-i = randint(1, 100)
-if i > percentChanceToPost:
-    print('[{:%Y-%m-%d, %H:%M:%S}] No action (failed random roll {}>{})\n'.format(datetime.datetime.now(), i, percentChanceToPost))
-    sys.exit(1)
+steem = Steem(wif = steemPostingKey)
+tagsOrAuthors = ["smartcash", "crypt0", "heiditravels", "jerrybanfield", "whiteblood", "scooter77", "ellemarieisme", "shayne", "maneco64"]
+voteWeight = 50
 
-# initialize steem object
-steem = Steem(wif=steemPostingKey)
-
-# use piston to set default voter and author
-subprocess.call(['piston', 'set', 'default_voter', steemAccountName])
-subprocess.call(['piston', 'set', 'default_author', steemAccountName])
-
-# upvote random post from the most recent [numPostsToConsider]
-posts = steem.get_posts(limit=numPostsToConsider, sort='created')
-postId = randint(0, numPostsToConsider-1)
-
-try:
-    steem.vote(posts[postId]["identifier"], voteWeight)
-except:
-    print('[{:%Y-%m-%d, %H:%M:%S}] Vote failed: {}\n'.format(datetime.datetime.now(), sys.exc_info()[0]))
-else:
-    print('[{:%Y-%m-%d, %H:%M:%S}] Vote succeeded: {}\n'.format(datetime.datetime.now(), posts[postId]["identifier"]))   
+for p in steem.stream_comments():
+        for tag in tagsOrAuthors:
+            try:
+                # make p["tags"] into p["author"] if you are voting by author and not by tag
+                if tag in p["author"] and p.is_main_post():
+                    vote = p.upvote(weight = +voteWeight, voter = "your username here")
+                    print("Upvoted post by @"+vote["operations"][0][1]["author"]+" using account @"+vote["operations"][0][1]["voter"]+"!")
+            except:
+                print("Failed to vote on post.") 
